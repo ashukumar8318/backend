@@ -1,8 +1,11 @@
  import { asyncHandler } from "../utils/asynchandlers.js";
  import {ApiError} from "../utils/apierrors.js"
  import {User} from "../model/user.model.js"
- import {uploadImage} from "../utils/cloudinary.js"
- 
+ import {uploadOnCloudinary} from "../utils/cloudinary.js"
+import { ApiResponse } from "../utils/apiresponse.js";
+import mongoose from "mongoose";
+import jwt from "jsonwebtoken"
+
 
  const registerUser = asyncHandler(async(req,res)=>{
    // take user details from frontend
@@ -20,8 +23,12 @@
    // taking req from JSON file 
    //to recive any detail from frontend use req.body() for form and json 
    //but for url it has diffrent technique
-   const{Username,Email,Password,Fullname }=req.body
-   console.log("email:",Email);
+
+   console.log("register");
+   
+
+   const{Username,Email,password,FullName }=req.body
+   console.log("body:",req.body);
 
    //for file handling go to routes and inject the middleware
 
@@ -33,65 +40,96 @@
    else if(Email === ""){
     throw new ApiError(404,"Email is required")
    }
-   else if(Password === ""){
+   else if(password === ""){
     throw new ApiError(404, "Password is required")
    }
-   else if(Fullname === ""){
+   else if(FullName === ""){
     throw new ApiError(404,"Fullname is required")
    }
 
    //3rd step check user is not already exist 
 
-   const existedUser = User.find({
+   const existedUser = await User.findOne({
     $or:[{Username},{Email}]
     
    })
+   console.log(existedUser);
+   
+
    if(existedUser){
     throw new ApiError(409,"Username or Email already exist")
    }
 
    //4th step upload image and avatar on local 
 
-   const avattarLocatpath= req.files?.avatar[0].path
-   const coverImagelocalpath = req.files?.coverImage[0].path
+   const avatarLocalPath=  req.files?.avatar?.[0]?.path
+   console.log(req.files);
+   console.log(req.path);
+   
+   
+   const coverImageLocalPath =  req.files?.coverImage?.[0]?.path
+    //  let coverImageLocalPath;
+    // if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+    //     coverImageLocalPath = req.files.coverImage[0].path
+    // }
 
-   if(!avattarLocatpath){
+    // console.log("avatarlocalpath",avatarLocalPath);
+    // console.log("coverimagelocalpath",coverImageLocalPath);
+    
+    
+
+   if(!avatarLocalPath){
     console.log(404,"Avatar image is required");
     
    }
+   
 
    //5th step upload on cloudinnary
 
-  const avatar = await uploadImage(avattarLocatpath)
-  const CoverImage = await uploadImage(coverImagelocalpath)
+  const avatar = await uploadOnCloudinary(avatarLocalPath)
+  const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
+  // console.log("avatarcloudinary",avatar);
+  // console.log("coverimagecloudinary",coverImage);
+  
   if(!avatar){
     throw new ApiError(404,"image not uploaded on cloudinary")
   }
 
   //6ths step  create user object entry in database by create method
-
-  const user= await User.create({
+  console.log("creating User it might take some time");
+  let user
+  try{
+   user= await User.create({
     Email,
-    Username: Username.toLowercase(),
-    Password,
+    Username: Username.toLowerCase(),
+    password:password,
     avatar:avatar.url,
-    coverImage: CoverImageoverimage?.url || "",
-    Fullname
-
-
+    coverImage: coverImage?.url || "",
+    FullName
+    
   })
+  console.log("user",user);
+}
+  catch(err){
+    console.log("mongodb err",err);
+    throw new ApiError(500, "DB error: " + err.message);
+    
+  }
+  
+  
 
   //7th step to remove paswword and refresh token 
 
-   const createdUser= await User.findById(_id).select("-Password -refreshToken")
+   const createdUser= await User.findById(user._id).select("-password -refreshToken")
 
    if(!createdUser){
     throw new ApiError(500,"something went wrong")
    }
 
-
-
+   return  res.status(201).json(
+    new ApiResponse(200,createdUser,"User registered succefully")
+   )
  
  })
 

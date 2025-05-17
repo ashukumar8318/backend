@@ -1,5 +1,5 @@
-import mongoose, { model } from "mongoose";
-import  {Schema} from "mongoose";
+import mongoose, { Schema } from "mongoose";
+//import  {Schema} from "mongoose";
 import jwt from "jsonwebtoken"
 import bcrypt from 'bcrypt'
 
@@ -20,13 +20,13 @@ const userSchema = new Schema({
         lowercase:true,
 
     },
-    Password: {
+    password: {
         type:String,
         required:true,
     },
     FullName : {
         type: String,
-        require:true,
+        required:true,
         index:true,
     },
     wathcHistory :{
@@ -39,17 +39,22 @@ const userSchema = new Schema({
     },
     avatar :{
         type:String,
+    },
+    coverImage:{
+        type:String,
+
     }
     
 
 
 },{
-    timesstamps:true,
+    timestamps:true,
 })
 // to make password encrypted
-userSchema.pre('save',function(next){
-    if(!this.Password.ismodified) return 
-    this.Password=bcrypt.hash(this.Password,16)
+userSchema.pre("save", async function (next) {
+    if(!this.isModified("password")) return next();
+
+    this.password = await bcrypt.hash(this.password, 10)
     next()
 })
 
@@ -58,22 +63,22 @@ userSchema.pre('save',function(next){
 //bcrypt can compare the paswword also by using compare method
 
 
-userSchema.method.isPasswordCorrect = async function(Password){
-    return await bcrypt.compare('Password',this.Password)
-}
+userSchema.methods.isPasswordCorrect = async function (password) {
+    return await bcrypt.compare(password, this.password);
+};
 
 userSchema.method.generateAccessToken = function(){
    return jwt.sign(
         {
             _id:this._id,
-            email:this.email,
-            Username:this.usename,
+            email:this.Emailmail,
+            Username:this.Username,
             FullName:this.FullName
 
         },
-        process.env.ACESS_TOKEN_SECRET,
+        process.env.ACCESS_TOKEN_SECRET,
         {
-            expiresIn:process.env.ACESS_TOKEN_EXPIRY
+            expiresIn:process.env.ACCESS_TOKEN_EXPIRY
 
         }
     )
