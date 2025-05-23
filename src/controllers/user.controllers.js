@@ -133,4 +133,41 @@ import jwt from "jsonwebtoken"
  
  })
 
+ const loginUser = asyncHandler(async(req,res)=>{
+  //take username or emaill and password from body
+  //check username or email is correct or not
+  //get access token and refresh token
+  //send cookies
+  //
+
+//take email username and password from body
+  const{Email,Username,password}=req.body
+// u can take any one to login is that username or email depend upon u
+  if(!Username || !Email){
+    throw new ApiError(404,"Username or Email is required")
+  }
+//after getting user name or email check one of these are present in database or not by folooowing method
+   const checklogin = await User.findOne({
+    $or:[{Username},{Email}]
+  })
+
+  if(!checklogin){
+    throw new ApiError(404,"Username or Email is incorrect")
+  }
+
+ const checkPassword = await User.findOne({password})
+
+ if(!checkPassword){
+  throw new ApiError(404,"Password is incorrect")
+ }
+
+
+
+
+
+ 
+
+ })
+
+export {loginUser}
  export {registerUser}
